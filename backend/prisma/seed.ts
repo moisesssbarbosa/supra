@@ -1,5 +1,7 @@
-import { prisma } from "../src/config/database";
+import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+
+const prisma = new PrismaClient();
 
 async function main() {
     console.log('🌱 Gerando dados automaticamente...');
@@ -14,10 +16,10 @@ async function main() {
     });
 
     await prisma.usuarios.create({
-        data: { nome: 'Staff', email: 'staff@weddingpass.com', cpf: '22222222222', cargo: false, senha: senhaCriptografada }
+        data: { nome: 'Cerimonialista', email: 'cerimonialista@weddingpass.com', cpf: '22222222222', cargo: false, senha: senhaCriptografada }
     });
 
-    const listaConvidados = [];
+    const listaConvidados: Prisma.ConvidadosCreateManyInput[] = [];
 
     for (let i = 1; i <= 30; i++) {
         const cpfFake = String(i).padStart(11, '0');
