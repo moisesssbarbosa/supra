@@ -1,12 +1,14 @@
-import { useState, useContext, type FormEvent } from "react";
+import { useState, useContext, type SubmitEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 
 export function Login() {
     const { signIn } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
 
-    async function handleLogin(e: FormEvent) {
+    async function handleLogin(e: SubmitEvent) {
         e.preventDefault();
         try {
             await signIn(email, senha);
