@@ -18,7 +18,7 @@ model Usuarios {
   cpf   String  @db.VarChar(11) @unique       @map("cpf_usuarios")
   email String  @db.VarChar(50) @unique       @map("email_usuarios")
   cargo Boolean @default(false)               @map("cargo_usuarios")
-  senha String  @map("senha_usuarios")
+  senha String                                @map("senha_usuarios")
 
   @@map("usuarios")
 }

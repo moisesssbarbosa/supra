@@ -20,6 +20,7 @@ export const fazerLogin = async (req: Request, res: Response) => {
         const usuario = await prisma.usuarios.findUnique({
             where: { email: email }
         });
+        
 
         if (!usuario) {
             return res.status(401).json({ error: "E-mail ou senha incorretos." });

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useContext, type ReactNode } from "react";
 import { AuthProvider, AuthContext } from "./context/AuthContext";
 import { Login } from "./pages/Login";
-import { Admin } from "./pages/Admin";
+import { Admin } from "./pages/Admin"
 import { Recepcao } from "./pages/Recepcao";
 
 // 1. Componente de Proteção de Rotas (Guarda de Rota)
