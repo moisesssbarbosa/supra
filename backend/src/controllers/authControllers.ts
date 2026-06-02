@@ -33,7 +33,7 @@ export const fazerLogin = async (req: Request, res: Response) => {
         }
 
         const token = jwt.sign(
-            {id: usuario.id, cargo: usuario.cargo},
+            {id: usuario.id, nome: usuario.nome ,cargo: usuario.cargo},
             SECRET_KEY,
             { expiresIn: '1d' }
         )
