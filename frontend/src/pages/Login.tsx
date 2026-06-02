@@ -16,7 +16,7 @@ export function Login() {
       const user = await signIn(email, senha);
       
       // 2. Se o usuário existir, decide a rota com base no cargo
-      if (user && user.cargo) {
+      if (user !== undefined && user !== null) {
         if (user.cargo === true) { // Ajuste aqui para a string exata do seu cargo admin
           navigate("/dashboard");
         } else {

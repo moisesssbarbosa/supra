@@ -3,7 +3,8 @@ import { jwtDecode } from "jwt-decode";
 import { api } from "../services/api";
 
 type Usuario = {
-    id: string;
+    id: number;
+    nome: string;
     cargo: boolean;
 };
 
@@ -66,10 +67,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const token = typeof resposta.data === 'string' ? resposta.data : resposta.data.token;
 
             // 🟢 Decodifica o token para pegar os dados do usuário salvos nele
-            const dadosDecodificados = jwtDecode<{ id: string; cargo: boolean }>(token);
+            const dadosDecodificados = jwtDecode<{ id: number; nome: string; cargo: boolean }>(token);
 
             const user: Usuario = {
             id: dadosDecodificados.id,
+            nome: dadosDecodificados.nome,
             cargo: dadosDecodificados.cargo
             };
 
