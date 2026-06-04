@@ -1,12 +1,4 @@
-interface Convidado {
-    id: number;
-    nome: string;
-    sobrenome: string;
-    email: string;
-    telefone: string;
-    mesa: number;
-    status_checkin: boolean; // status representa o check-in feito ou não
-}
+import { type Convidado } from "./ModalConvidado";
 
 interface TabelaConvidadosProps {
     dados: Convidado[];
@@ -56,7 +48,7 @@ export function TabelaConvidados({
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-center gap-3">
                     <button
-                        onClick={() => onCheckIn?.(convidado.id)}
+                        onClick={() => onCheckIn?.(convidado.id!)}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                             // 🔥 CORREÇÃO: Garante que o fundo do botão muda de cor na hora
                             convidado.status_checkin ? "bg-emerald-500" : "bg-slate-700" 
@@ -81,14 +73,20 @@ export function TabelaConvidados({
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => onEditar?.(convidado.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // ⚠️ PROTEÇÃO EXTRA
+                          onEditar?.(convidado.id!);
+                        }}
                         className="rounded bg-amber-500/10 p-1.5 text-xs font-medium text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition active:scale-95"
                         title="Editar Convidado"
                       >
                         ✏️
                       </button>
                       <button
-                        onClick={() => onDeletar?.(convidado.id)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // ⚠️ ISSO AQUI EVITA O VAZAMENTO DO CLIQUE E O ERRO 403
+                          onDeletar?.(convidado.id!);
+                        }}
                         className="rounded bg-rose-500/10 p-1.5 text-xs font-medium text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 transition active:scale-95"
                         title="Excluir Convidado"
                       >

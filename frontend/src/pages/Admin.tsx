@@ -1,35 +1,30 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
 import { TabelaConvidados } from "../components/TabelaConvidados";
+import { ModalConvidado, type Convidado } from "../components/ModalConvidado";
 import { useAuth } from "../context/useAuth";
-
-interface Convidado {
-    id: number;
-    nome: string;
-    sobrenome: string;
-    email: string;
-    telefone: string;
-    mesa: number;
-    status_checkin: boolean;
-}
 
 export function Admin() {
   const { usuario, signOut } = useAuth();
   const [convidados, setConvidados] = useState<Convidado[]>([]);
   const [busca, setBusca] = useState("");
 
+  const carregarConvidados = async () => {
+    try {
+      const response = await api.get("/convidados");
+      setConvidados(response.data);
+    } catch (error) {
+      console.error("Erro ao carregar os convidados:", error);
+    }
+  }
+
   // Substitua o seu bloco antigo pelo bloco abaixo (Linhas 21 a 32):
     useEffect(() => {
-    async function carregarConvidados() {
-        try {
-        const response = await api.get("/convidados");
-        setConvidados(response.data);
-        } catch (error) {
-        console.error("Erro ao carregar os convidados:", error);
-        }
-    }
-
-    carregarConvidados();
+      // 🔥 Função autoinvocável isola o escopo assíncrono para o linter ficar feliz
+      const buscarDados = async () => {
+        await carregarConvidados();
+      };
+      buscarDados(); 
     }, []); // Array vazio garante que roda apenas uma vez ao montar a tela
 
   // Regras de negócio do Dashboard calculadas no Front-end com os dados da API
@@ -38,47 +33,32 @@ export function Admin() {
   const totalPendentes = totalConvidados - totalConfirmados;
 
     async function handleCheckInAdmin(id: number) {
-        // 1. Localiza o convidado pelo ID
-        const convidadoIndex = convidados.findIndex(c => c.id === id);
-        if (convidadoIndex === -1) return;
+      const convidadoAtual = convidados.find(c => c.id === id);
+      if (!convidadoAtual) return;
 
-        const convidadoAtual = convidados[convidadoIndex];
-        const novoStatus = !convidadoAtual.status_checkin;
+      const novoStatus = !convidadoAtual.status_checkin;
 
-        try {
-            // 2. Avisa o Back-end
-            await api.patch(`/convidados/${id}/checkin`, { status_checkin: novoStatus }); 
-            
-            // 3. ATUALIZAÇÃO FORÇADA DO ESTADO (Imutabilidade)
-            const novosConvidados = [...convidados]; // Cria uma cópia real do array
-            novosConvidados[convidadoIndex] = { 
-            ...convidadoAtual, 
-            status_checkin: novoStatus 
-            };
-            
-            setConvidados(novosConvidados); // O React VÊ a mudança agora
-            
-        } catch (error) {
-            console.error("Erro ao alternar check-in:", error);
-            alert("Erro de sincronização. Tente novamente.");
-        }
+      try {
+        await api.patch(`/convidados/${id}/checkin`, { status_checkin: novoStatus });
+        // 🔥 PADRÃO DE MERCADO: Força a busca dos dados limpos da API imediatamente
+        await carregarConvidados(); 
+      } catch (error) {
+        console.error("Erro no check-in do Admin:", error);
+        alert("Erro ao alterar o status.");
+      }
     }
 
   async function handleDeletarConvidado(id: number) {
     if (confirm("Tem certeza que deseja remover este convidado do evento?")) {
       try {
         await api.delete(`/convidados/${id}`);
-        setConvidados((prev) => prev.filter((c) => c.id !== id));
+        // 🔥 PADRÃO DE MERCADO: Puxa a lista nova sem o deletado e recalcula o dashboard na hora
+        await carregarConvidados(); 
       } catch (error) {
-        console.error(error);
-        alert("Erro ao deletar convidado.");
+        console.error("Erro ao deletar convidado:", error);
+        alert("Erro ao tentar remover o convidado.");
       }
     }
-  }
-
-  function handleEditarConvidado(id: number) {
-    // Pronto para você integrar seu modal de edição ou redirecionamento futuramente
-    alert(`Abrir edição do convidado ID: ${id}`);
   }
 
   const convidadosFiltrados = convidados.filter((c) =>
@@ -86,10 +66,53 @@ export function Admin() {
     c.sobrenome.toLowerCase().includes(busca.toLowerCase())
   );
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [convidadoParaEditar, setConvidadoParaEditar] = useState<Convidado | null>(null);
+
+  function handleAbrirCadastro() {
+    setConvidadoParaEditar(null); // Limpa o estado para indicar Novo Convidado
+    setIsModalOpen(true);
+  }
+
+  // 2. Função para abrir o modal
+  function handleAbrirEdicao(id: number) {
+    const convidado = convidados.find(c => c.id === id);
+    if (convidado) {
+      setConvidadoParaEditar(convidado);
+      setIsModalOpen(true);
+    }
+  }
+
+  async function handleSalvarConvidado(dados: Convidado) {
+    try {
+      if (dados.id) {
+        // 📝 Se tem ID, significa que estamos EDITANDO (PUT)
+        await api.put(`/convidados/${dados.id}`, dados);
+        alert("Convidado atualizado com sucesso!");
+      } else {
+        // ➕ Se NÃO tem ID, significa que estamos CRIANDO (POST)
+        await api.post('/convidados', dados);
+        alert("Convidado cadastrado com sucesso!");
+      }
+      
+      setIsModalOpen(false); // Fecha o modal
+      await carregarConvidados(); // 🔥 Faz o refetch e atualiza a tabela e dashboard na hora!
+      
+    } catch (error: unknown) { // ⚠️ Trocado de 'any' para 'unknown'
+      console.error("Erro na operação:", error);
+      
+      // 🔥 Criamos uma constante tipando o erro temporariamente para extrair a resposta da API
+      const err = error as { response?: { data?: { error?: string } } };
+      
+      const mensagemDoBack = err.response?.data?.error || "Erro de conexão.";
+      alert(`Erro: ${mensagemDoBack}`);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 sm:p-12">
       <div className="max-w-6xl mx-auto space-y-8">
-        
+
         {/* Topbar */}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-6">
           <div>
@@ -130,11 +153,11 @@ export function Admin() {
               className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
-          <button 
-            onClick={() => alert("Abrir modal de Novo Cadastro")}
-            className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 font-medium text-sm rounded-lg transition shadow active:scale-95 text-white"
+          <button
+            onClick={handleAbrirCadastro}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium transition"
           >
-            + Cadastrar Convidado
+            + Adicionar Convidado
           </button>
         </div>
 
@@ -143,10 +166,16 @@ export function Admin() {
           dados={convidadosFiltrados} 
           onCheckIn={handleCheckInAdmin}
           onDeletar={handleDeletarConvidado}
-          onEditar={handleEditarConvidado}
+          onEditar={handleAbrirEdicao}
           isAdmin={true} 
         />
 
+        <ModalConvidado
+          isOpen={isModalOpen} 
+          convidado={convidadoParaEditar} 
+          onClose={() => setIsModalOpen(false)} 
+          onSalvar={handleSalvarConvidado}
+        />
       </div>
     </div>
   );

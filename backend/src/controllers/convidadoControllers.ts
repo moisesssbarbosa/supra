@@ -91,7 +91,7 @@ export const atualizarConvidado = async ( req: Request, res: Response) => {
         res.status(200).json(convidadoAtualizado);
     } catch (error) {
         if (error instanceof z.ZodError) {
-            return res.status(409).json({
+            return res.status(400).json({
                 error: "Erro de validação nos campos.",
                 detalhes: error.issues.map(err => err.message)
             });

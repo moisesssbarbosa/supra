@@ -15,7 +15,7 @@ router.post('/convidados', autenticar, verificarAdmin, criarConvidados);
 
 router.patch('/convidados/:id/checkin', autenticar, atualizarCheckin);
 
-router.put('/convidados/id', autenticar, verificarAdmin, atualizarConvidado);
+router.put('/convidados/:id', autenticar, verificarAdmin, atualizarConvidado);
 
 router.get('/convidados', autenticar, listarConvidados);
 
