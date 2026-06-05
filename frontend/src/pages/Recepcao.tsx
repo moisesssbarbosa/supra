@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api"; 
 import { TabelaConvidados } from "../components/TabelaConvidados";
+import { type Convidado } from "../components/ModalConvidado";
 import { useAuth } from "../context/useAuth";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-interface Convidado {
-    id: number;
-    nome: string;
-    sobrenome: string;
-    email: string;
-    telefone: string;
-    mesa: number;
-    status_checkin: boolean;
-}
 
 export function Recepcao() {
   const { usuario, signOut } = useAuth(); // Corrigido: Chamando o hook corretamente como função
