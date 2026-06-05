@@ -1,53 +1,49 @@
 import { useEffect, useState } from 'react';
+import { LayoutDashboard, DoorOpen, Plus, Search } from 'lucide-react';
 import { TabelaConvidados } from '../components/TabelaConvidados';
 import { ModalConvidado } from '../components/ModalConvidado';
 import { useConvidados } from '../hooks/useConvidados';
 import { type Convidado } from '../@types';
 
 export function Admin() {
-  // Puxando todas as funções que criamos no hook centralizado
+  // Conexão nativa com suas funções da API
   const { convidados, carregarConvidados, salvarConvidado, realizarCheckIn, deletarConvidado } = useConvidados();
   
-  // Estados para controlar o Modal
+  // Estados de controle do Modal e Busca
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [convidadoSelecionado, setConvidadoSelecionado] = useState<Convidado | null>(null);
-
-  // Estado para a barra de pesquisa por nome ou CPF
   const [pesquisa, setPesquisa] = useState('');
 
-  // Carrega a lista assim que o Admin entra na tela
+  // Sincronização com o Banco de Dados
   useEffect(() => {
     carregarConvidados();
   }, [carregarConvidados]);
 
-  // Filtra os convidados em tempo real baseado no input de pesquisa
+  // Filtro inteligente
   const convidadosFiltrados = convidados.filter(c => 
     c.nome.toLowerCase().includes(pesquisa.toLowerCase()) || 
-    c.cpf.includes(pesquisa)
+    (c.cpf && c.cpf.includes(pesquisa))
   );
 
-  // Calcula os números para o Dashboard automaticamente
+  // Cálculos dinâmicos das métricas do Dashboard
   const totalConvidados = convidados.length;
   const confirmados = convidados.filter(c => c.status_checkin).length;
   const pendentes = totalConvidados - confirmados;
 
-  // Função disparada ao clicar no botão "Salvar" dentro do Modal
   const handleSalvar = async (dados: Convidado) => {
     const resultado = await salvarConvidado(dados);
     if (resultado.sucesso) {
-      setIsModalOpen(false); // Fecha o modal se deu tudo certo
+      setIsModalOpen(false);
     } else {
-      alert(resultado.erro); // Avisa se o Zod ou o banco barrou algo
+      alert(resultado.erro);
     }
   };
 
-  // Abre o modal limpo para cadastrar
   const handleAbrirCadastro = () => {
     setConvidadoSelecionado(null);
     setIsModalOpen(true);
   };
 
-  // Abre o modal preenchido com o convidado selecionado para editar
   const handleAbrirEdicao = (id: number) => {
     const convidado = convidados.find(c => c.id === id);
     if (convidado) {
@@ -57,79 +53,121 @@ export function Admin() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans flex">
+    <div className="min-h-screen bg-[#0a0908] text-[#f4f1de] select-none flex fonte-corpo">
       
-      {/* 1. BARRA LATERAL (SIDEBAR) */}
-      <aside className="w-64 bg-slate-900 border-r border-white/10 p-6 flex-col justify-between hidden md:flex">
-        <div>
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-lg">P</div>
-            <h1 className="text-xl font-bold tracking-wider">PORTARIA</h1>
+      {/* 📥 INJEÇÃO DA IDENTIDADE TIPOGRÁFICA */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet" />
+
+      <style>{`
+        .fonte-titulo { font-family: 'Playfair Display', serif; }
+        .fonte-corpo { font-family: 'Plus Jakarta Sans', sans-serif; }
+      `}</style>
+
+      {/* 🏛️ 1. BARRA LATERAL (SIDEBAR DE LUXO) */}
+      <aside className="w-64 bg-[#0a0908] border-r border-[#d4af37]/20 p-6 flex-col justify-between hidden lg:flex">
+        <div className="space-y-10">
+          
+          {/* Logo Corporativa no Estilo Maison */}
+          <div className="flex items-center gap-4 py-2">
+            <div className="w-10 h-10 rounded-full border border-[#d4af37] flex items-center justify-center text-xs font-bold tracking-widest text-[#d4af37] bg-[#0f0e0c]">
+              W
+            </div>
+            <div className="text-left">
+              <h1 className="text-xs font-bold tracking-widest text-white uppercase">Wedding Pass</h1>
+              <p className="text-[9px] tracking-[0.2em] text-[#d4af37] uppercase font-light">Administration</p>
+            </div>
           </div>
+
+          {/* Navegação Limpa */}
           <nav className="space-y-2">
-            <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-600/10 text-indigo-400 font-medium">
-              📊 Painel Geral
+            <a href="#" className="flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-[0.25em] text-[#d4af37] bg-[#d4af37]/5 font-bold border-l-2 border-[#d4af37] transition">
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              <span>Painel Geral</span>
             </a>
-            <a href="/recepcao" className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:bg-white/5 hover:text-white transition">
-              🚪 Recepção / Check-in
+            <a href="/recepcao" className="flex items-center gap-3 px-4 py-3 text-xs uppercase tracking-[0.25em] text-stone-400 hover:text-white transition font-medium">
+              <DoorOpen className="h-4 w-4 shrink-0" />
+              <span>Recepção</span>
             </a>
           </nav>
         </div>
-        <div className="border-t border-white/5 pt-4 text-xs text-slate-500">
-          Painel Administrativo v1.0
+
+        <div className="border-t border-stone-900 pt-4 text-[10px] uppercase tracking-widest text-stone-600 font-light">
+          Maison de Mariage v1.0
         </div>
       </aside>
 
-      {/* 2. CONTEÚDO PRINCIPAL */}
-      <main className="flex-1 p-6 md:p-10 space-y-8 max-w-7xl mx-auto w-full">
+      {/* 🏛️ 2. PAINEL DE CONTEÚDO PRINCIPAL REORGANIZADO */}
+      <main className="flex-1 p-6 md:p-12 space-y-12 max-w-7xl mx-auto w-full overflow-hidden">
         
-        {/* CABEÇALHO */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">Gerenciamento de Convidados</h2>
-            <p className="text-slate-400 mt-1">Monitore, edite e adicione pessoas ao evento em tempo real.</p>
+        {/* CABEÇALHO DA TELA */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="text-left space-y-1">
+            <div className="text-xs uppercase tracking-[0.5em] text-[#d4af37] font-bold">
+              Maison Dashboard
+            </div>
+            <h2 className="fonte-titulo text-3xl sm:text-4xl text-white tracking-wide font-light">
+              Gerenciamento de Convidados
+            </h2>
+            <p className="text-sm text-stone-400 font-light tracking-wide">
+              Controle de acessos, modificações de convites e monitoramento em tempo real.
+            </p>
           </div>
+
           <button
             onClick={handleAbrirCadastro}
-            className="bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white px-5 py-3 rounded-xl font-semibold transition shadow-lg shadow-indigo-600/20 text-center"
+            className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-[#d4af37] hover:bg-[#bfa032] text-black text-xs font-bold uppercase tracking-[0.3em] transition shadow-xl"
           >
-            + Novo Convidado
+            <Plus className="h-4 w-4" />
+            Novo Convidado
           </button>
         </div>
 
-        {/* CARDS DE ESTATÍSTICA (DASHBOARD) */}
+        {/* 📊 3. CARDS DE METRICAS SLIM LUXURY */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl shadow-sm">
-            <p className="text-sm font-medium text-slate-400 uppercase tracking-wider">Total de Convidados</p>
-            <p className="text-4xl font-extrabold mt-2 text-white">{totalConvidados}</p>
+          
+          <div className="border border-stone-900 bg-[#0e0d0b] p-6 text-left relative overflow-hidden">
+            <div className="absolute top-0 left-0 h-0.5 w-12 bg-stone-700" />
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-[0.25em]">Total de Convites</p>
+            <p className="text-4xl font-light mt-3 text-white tracking-tight">{totalConvidados}</p>
           </div>
-          <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl shadow-sm">
-            <p className="text-sm font-medium text-emerald-400 uppercase tracking-wider">Confirmados (Check-in)</p>
-            <p className="text-4xl font-extrabold mt-2 text-emerald-400">{confirmados}</p>
+
+          <div className="border border-[#d4af37]/30 bg-[#d4af37]/5 p-6 text-left relative overflow-hidden">
+            <div className="absolute top-0 left-0 h-0.5 w-12 bg-[#d4af37]" />
+            <p className="text-[10px] font-bold text-[#d4af37] uppercase tracking-[0.25em]">Presenças Confirmadas</p>
+            <p className="text-4xl font-light mt-3 text-[#d4af37] tracking-tight">{confirmados}</p>
           </div>
-          <div className="bg-slate-900 border border-white/10 p-6 rounded-2xl shadow-sm">
-            <p className="text-sm font-medium text-amber-400 uppercase tracking-wider">Pendentes</p>
-            <p className="text-4xl font-extrabold mt-2 text-amber-400">{pendentes}</p>
+
+          <div className="border border-stone-900 bg-[#0e0d0b] p-6 text-left relative overflow-hidden">
+            <div className="absolute top-0 left-0 h-0.5 w-12 bg-amber-700/40" />
+            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-[0.25em]">Acessos Pendentes</p>
+            <p className="text-4xl font-light mt-3 text-amber-500 tracking-tight">{pendentes}</p>
+          </div>
+
+        </div>
+
+        {/* 🔍 4. FILTRO DE BUSCA MINIMALISTA */}
+        <div className="text-left">
+          <div className="relative border-b-2 border-[#3d2f00] focus-within:border-[#d4af37] transition duration-200 max-w-xl pb-2">
+            <Search className="absolute left-0 bottom-4 h-5 w-5 text-[#856600]" />
+            <input
+              type="text"
+              placeholder="Buscar por nome ou documento..."
+              value={pesquisa}
+              onChange={(e) => setPesquisa(e.target.value)}
+              className="w-full bg-transparent border-0 pl-8 pr-4 text-white placeholder-stone-600 focus:outline-none focus:ring-0 h-12 text-lg font-light tracking-wide"
+            />
           </div>
         </div>
 
-        {/* BARRA DE PESQUISA */}
-        <div className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 flex items-center">
-          <input
-            type="text"
-            placeholder="🔍 Digite o nome ou CPF para buscar..."
-            className="w-full bg-transparent text-white placeholder-slate-500 focus:outline-none text-base"
-            value={pesquisa}
-            onChange={(e) => setPesquisa(e.target.value)}
-          />
-        </div>
-
-        {/* SEÇÃO DA TABELA */}
-        <div className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-          <div className="p-6 border-b border-white/5">
-            <h3 className="text-lg font-bold">Lista de Convites</h3>
+        {/* 🏛️ 5. ENVELOPE DA TABELA INTEGRADA */}
+        <div className="space-y-4 text-left">
+          <div className="border-b border-stone-900 pb-4">
+            <h3 className="text-xs uppercase tracking-[0.35em] text-stone-400 font-bold">Registros de Convites Ativos</h3>
           </div>
           
+          {/* Sua tabela customizada linda e responsiva */}
           <TabelaConvidados 
             dados={convidadosFiltrados} 
             isAdmin={true} 
@@ -140,7 +178,7 @@ export function Admin() {
         </div>
       </main>
 
-      {/* MODAL GLOBAL (SERVE PARA CRIAR E EDITAR) */}
+      {/* MODAL GLOBAL DE CADASTRO / EDIÇÃO */}
       <ModalConvidado 
         isOpen={isModalOpen} 
         convidado={convidadoSelecionado} 

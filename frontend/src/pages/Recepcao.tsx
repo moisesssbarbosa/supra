@@ -1,142 +1,156 @@
-import { useEffect, useState } from "react";
-import { api } from "../services/api"; 
-import { TabelaConvidados } from "../components/TabelaConvidados";
-import { type Convidado } from "../components/ModalConvidado";
-import { useAuth } from "../context/useAuth";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FileDown, LogOut, Search } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Importações baseadas na árvore de arquivos real do seu projeto (image_cf9e4f.png)
+import { useConvidados } from '../hooks/useConvidados';
+import { TabelaConvidados } from '../components/TabelaConvidados';
 
 export function Recepcao() {
-  const { usuario, signOut } = useAuth(); // Corrigido: Chamando o hook corretamente como função
-  const [convidados, setConvidados] = useState<Convidado[]>([]);
-  const [busca, setBusca] = useState("");
+  // 1. Conexão real com a sua API através do seu hook customizado
+  const { convidados, carregarConvidados, realizarCheckIn } = useConvidados();
+  
+  // Estados locais para controle de busca e operador
+  const [pesquisa, setPesquisa] = useState("");
 
   useEffect(() => {
-    async function carregarConvidados() {
-      try {
-        const response = await api.get("/convidados");
-        setConvidados(response.data);
-      } catch (error) {
-        console.error("Erro ao carregar os convidados da API:", error);
-      }
-    }
     carregarConvidados();
-  }, []);
+  }, [carregarConvidados]);
 
-    async function handleCheckIn(id: number) {
-        // 1. Localiza o convidado pelo ID
-        const convidadoIndex = convidados.findIndex(c => c.id === id);
-        if (convidadoIndex === -1) return;
+  // 2. Filtro dinâmico que alimenta a tabela e o relatório em tempo real
+  const convidadosFiltrados = convidados?.filter(c  => 
+    c.nome?.toLowerCase().includes(pesquisa.toLowerCase()) || 
+    c.sobrenome?.toLowerCase().includes(pesquisa.toLowerCase())
+  ) || [];
 
-        const convidadoAtual = convidados[convidadoIndex];
-        const novoStatus = !convidadoAtual.status_checkin;
+  const totalConfirmados = convidados?.filter(c  => c.status_checkin).length || 0;
 
-        try {
-            // 2. Avisa o Back-end
-            await api.patch(`/convidados/${id}/checkin`, { status_checkin: novoStatus }); 
-            
-            // 3. ATUALIZAÇÃO FORÇADA DO ESTADO (Imutabilidade)
-            const novosConvidados = [...convidados]; // Cria uma cópia real do array
-            novosConvidados[convidadoIndex] = { 
-            ...convidadoAtual, 
-            status_checkin: novoStatus 
-            };
-            
-            setConvidados(novosConvidados); // O React VÊ a mudança agora
-            
-        } catch (error) {
-            console.error("Erro ao alternar check-in:", error);
-            alert("Erro de sincronização. Tente novamente.");
-        }
-    }
+  // 3. Sua função de exportação PDF corrigida e conectada com os dados da API
+  const handleExportPdf = () => {
+    const doc = new jsPDF();
 
-  const convidadosFiltrados = convidados.filter((c) =>
-    c.nome.toLowerCase().includes(busca.toLowerCase()) || 
-    c.sobrenome.toLowerCase().includes(busca.toLowerCase())
-  );
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text("Senac Wedding - Lista de Presença", 14, 20);
 
-  function handleGerarPDF() {
-  // 1. Cria a instância do documento PDF
-  const doc = new jsPDF();
-
-  // 2. Adiciona um título estilizado no topo
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("Senac Wedding - Lista de Presença", 14, 20);
-
-  // Subtítulo com dados do operador
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(100);
-  const operador = usuario?.nome || "Recepção";
-  doc.text(`Gerado por: ${operador} | Data: ${new Date().toLocaleDateString()}`, 14, 28);
-
-  // 3. Mapeia os convidados filtrados para o formato que a tabela do jsPDF aceita
-  const colunas = ["Nome", "Sobrenome", "E-mail", "Telefone", "Mesa", "Status"];
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100);
   
-  const linhas = convidadosFiltrados.map(c => [
-    c.nome,
-    c.sobrenome,
-    c.email,
-    c.telefone,
-    c.mesa.toString(),
-    c.status_checkin ? "Confirmado" : "Pendente"
-  ]);
+    doc.text(`Data: ${new Date().toLocaleDateString()}`, 14, 28);
 
-  // 4. Desenha a tabela automaticamente
-  autoTable(doc, {
-    startY: 35,
-    head: [colunas],
-    body: linhas,
-    styles: { font: "helvetica", fontSize: 9 },
-    headStyles: { fillColor: [79, 70, 229] }, // Cor Indigo igual ao seu tema do Tailwind
-    alternateRowStyles: { fillColor: [245, 247, 250] } // Efeito zebra cinza claro
-  });
+    const colunas = ["Nome", "Sobrenome", "E-mail", "Telefone", "Mesa", "Status"];
+    
+    const linhas = convidadosFiltrados.map(c => [
+      c.nome,
+      c.sobrenome,
+      c.email,
+      c.telefone,
+      c.mesa?.toString() || "N/A",
+      c.status_checkin ? "Confirmado" : "Pendente"
+    ]);
 
-  // 5. Faz o download direto do arquivo
-  doc.save("lista-convidados-wedding.pdf");
-}
+    autoTable(doc, {
+      startY: 35,
+      head: [colunas],
+      body: linhas,
+      styles: { font: "helvetica", fontSize: 9 },
+      headStyles: { fillColor: [212, 175, 55] },
+    });
+
+    doc.save(`lista_presenca_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 sm:p-12">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Portaria Geral</h1>
-            <p className="mt-2 text-sm text-slate-400">
-                Operador(a): <span className="text-indigo-400 font-semibold">{usuario?.nome}</span> | Controle de entrada em tempo real.
+    <div className="min-h-screen bg-[#0a0908] text-[#f4f1de] select-none fonte-corpo">
+      
+      {/* LINK DAS FONTES LUXO */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap" rel="stylesheet" />
+
+      <style>{`
+        .fonte-titulo { font-family: 'Playfair Display', serif; }
+        .fonte-corpo { font-family: 'Plus Jakarta Sans', sans-serif; }
+      `}</style>
+
+      {/* HEADER REESTRUTURADO */}
+      <header className="border-b border-[#d4af37]/20 bg-[#0a0908]">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-full border border-[#d4af37] flex items-center justify-center text-xs font-medium tracking-widest text-[#d4af37] bg-[#0f0e0c]">
+              W
+            </div>
+            <div className="text-left hidden sm:block">
+              <h1 className="text-xs font-bold tracking-widest text-white uppercase">Wedding Pass</h1>
+              <p className="text-[9px] tracking-[0.2em] text-[#d4af37] uppercase font-light">Maison de Mariage</p>
+            </div>
+          </div>
+
+          <Link
+            to="/"
+            className="flex items-center gap-3 text-xs uppercase tracking-[0.35em] text-stone-400 hover:text-[#d4af37] transition duration-200 font-semibold"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </Link>
+        </div>
+      </header>
+
+      {/* CONTEÚDO */}
+      <main className="max-w-7xl mx-auto px-6 sm:px-10 py-12 sm:py-16">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8">
+          
+          <div className="space-y-3 text-left">
+            <div className="text-xs uppercase tracking-[0.5em] text-[#d4af37] font-bold">
+              Recepção
+            </div>
+            <h1 className="fonte-titulo text-4xl sm:text-5xl text-white tracking-wide font-light">
+              Lista de Convidados
+            </h1>
+            <p className="text-base text-stone-400 font-light tracking-wide mt-2">
+              <span className="text-[#d4af37] font-semibold">{totalConfirmados}</span> de <span className="text-white font-semibold">{convidados?.length || 0}</span> presentes confirmados
             </p>
           </div>
-          <button 
-            onClick={handleGerarPDF}
-            className="px-4 py-2 text-xs font-semibold uppercase bg-emerald-600 text-white rounded-md hover:bg-emerald-500 transition shadow active:scale-95"
-            >
-            📄 Gerar Relatório PDF
-            </button>
-          <button onClick={signOut} className="self-start sm:self-center px-4 py-2 text-xs font-semibold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-md hover:bg-rose-500/20 transition">
-            Sair
+
+          <button
+            onClick={handleExportPdf}
+            className="inline-flex items-center justify-center gap-3 px-8 py-4 border-2 border-[#d4af37] text-[#d4af37] text-xs font-bold uppercase tracking-[0.35em] bg-[#d4af37]/5 hover:bg-[#d4af37] hover:text-black transition-colors duration-200 shadow-xl md:w-auto w-full"
+          >
+            <FileDown className="h-5 w-5 shrink-0" />
+            Gerar Relatório
           </button>
         </div>
 
-        <div className="w-full max-w-md">
-          <label htmlFor="search" className="block text-xs font-medium uppercase tracking-wider text-slate-400 mb-2">
-            Buscar Convidado
-          </label>
-          <input
-            id="search"
-            type="text"
-            placeholder="Digite o nome para filtrar..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-500 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
+        {/* Divisória */}
+        <div className="h-0.5 bg-linear-to-r from-transparent via-[#d4af37]/60 to-transparent my-10 sm:my-12" />
+
+        {/* BARRA DE PESQUISA */}
+        <div className="mb-10 text-left">
+          <div className="relative border-b-2 border-[#3d2f00] focus-within:border-[#d4af37] transition duration-200 max-w-xl pb-2">
+            <Search className="absolute left-0 bottom-4 h-5 w-5 text-[#856600]" />
+            <input
+              type="text"
+              placeholder="Buscar convidado por nome..."
+              value={pesquisa}
+              onChange={(e) => setPesquisa(e.target.value)}
+              className="w-full bg-transparent border-0 pl-8 pr-4 text-white placeholder-stone-600 focus:outline-none focus:ring-0 h-12 text-lg font-light tracking-wide"
+            />
+          </div>
         </div>
 
-        {/* Passando isAdmin como false explicitamente para ocultar botões de CRUD na Recepção */}
-        <TabelaConvidados dados={convidadosFiltrados} onCheckIn={handleCheckIn} isAdmin={false} />
+        {/* COMPONENTE DA TABELA ISOLADO (Evita poluição de código e erros) */}
+        <div className="w-full">
+            <TabelaConvidados 
+              dados={convidadosFiltrados} 
+              isAdmin={false}
+              onCheckIn={realizarCheckIn} 
+            />
+        </div>
 
-      </div>
+      </main>
     </div>
   );
 }
