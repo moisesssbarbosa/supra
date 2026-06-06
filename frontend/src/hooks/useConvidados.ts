@@ -29,11 +29,29 @@ export function useConvidados() {
       }
       await carregarConvidados(); // Auto-update
       return { sucesso: true };
+      
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { error?: string } } };
-      return { sucesso: false, erro: err.response?.data?.error || "Erro na operação." };
+      // Mapeando a estrutura exata que vimos no console da sua imagem
+      const err = error as { 
+        response?: { 
+          data?: { 
+            error?: string; 
+            detalhes?: string[]; 
+          } 
+        } 
+      };
+
+      // 1. Se existir a lista de "detalhes" e ela tiver pelo menos um erro dentro
+      if (err.response?.data?.detalhes && err.response.data.detalhes.length > 0) {
+        // Pegamos a primeira mensagem específica do Zod (ex: "O nome deve ter no mínimo 3 letras.")
+        return { sucesso: false, erro: err.response.data.detalhes[0] };
+      }
+
+      // 2. Fallback caso seja outro tipo de erro que não seja validação de campos
+      const mensagemErro = err.response?.data?.error || "Erro na operação.";
+      return { sucesso: false, erro: mensagemErro };
     }
-  };
+  }
 
   // 3. Deletar
   const deletarConvidado = async (id: number) => {

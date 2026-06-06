@@ -16,7 +16,16 @@ export function Admin() {
 
   // Sincronização com o Banco de Dados
   useEffect(() => {
+    // 1. Carrega imediatamente quando a tela abre
     carregarConvidados();
+
+    // 2. 🔥 Cria um cronômetro que puxa os dados do banco a cada 2 segundos (2000ms)
+    const intervalo = setInterval(() => {
+      carregarConvidados();
+    }, 2000);
+
+    // 3. Importante: Limpa o cronômetro se o usuário sair da tela (evita vazamento de memória)
+    return () => clearInterval(intervalo);
   }, [carregarConvidados]);
 
   // Filtro inteligente
